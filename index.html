@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Blackjack</title>
+<style>
+body { font-family: Arial, sans-serif; max-width: 600px; margin: 40px auto; }
+.hand { margin-bottom: 1em; }
+button { margin-right: 5px; }
+.card { display: inline-block; padding: 4px 6px; border: 1px solid #000; margin-right: 4px; }
+.hidden { border-color: transparent; }
+</style>
+</head>
+<body>
+<h1>Blackjack</h1>
+<div id="dealer" class="hand">
+  <h2>Dealer</h2>
+  <div id="dealerCards"></div>
+  <div id="dealerValue"></div>
+</div>
+<div id="player" class="hand">
+  <h2>Your Hand</h2>
+  <div id="playerCards"></div>
+  <div id="playerValue"></div>
+</div>
+<div id="controls">
+  <button id="deal">Deal</button>
+  <button id="hit" disabled>Hit</button>
+  <button id="stand" disabled>Stand</button>
+</div>
+<div id="message"></div>
+<script>
+const SUITS = ["Hearts", "Diamonds", "Clubs", "Spades"];
+const RANKS = ["2","3","4","5","6","7","8","9","10","J","Q","K","A"];
+const VALUES = {"2":2,"3":3,"4":4,"5":5,"6":6,"7":7,"8":8,"9":9,"10":10,"J":10,"Q":10,"K":10,"A":11};
+let deck = [];
+let playerHand = [];
+let dealerHand = [];
+let inRound = false;
+
+function createDeck() {
+  deck = [];
+  for (const suit of SUITS) {
+    for (const rank of RANKS) {
+      deck.push({rank, suit, value: VALUES[rank]});
+    }
+  }
+}
+
+function shuffle() {
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+}
+
+function draw() {
+  if (!deck.length) throw new Error("Deck empty");
+  return deck.pop();
+}
+
+function handValue(hand) {
+  let total = hand.reduce((s, c) => s + c.value, 0);
+  let aces = hand.filter(c => c.rank === "A").length;
+  while (total > 21 && aces) {
+    total -= 10;
+    aces--;
+  }
+  return total;
+}
+
+function startRound() {
+  createDeck();
+  shuffle();
+  playerHand = [draw(), draw()];
+  dealerHand = [draw(), draw()];
+  inRound = true;
+  document.getElementById('hit').disabled = false;
+  document.getElementById('stand').disabled = false;
+  document.getElementById('deal').disabled = true;
+  document.getElementById('message').textContent = '';
+  updateDisplay(true);
+}
+
+function updateDisplay(hideDealerSecond) {
+  const dealerDiv = document.getElementById('dealerCards');
+  dealerDiv.innerHTML = '';
+  dealerHand.forEach((c, i) => {
+    const card = document.createElement('span');
+    card.className = 'card';
+    if (hideDealerSecond && i === 1 && inRound) {
+      card.textContent = 'Hidden';
+      card.classList.add('hidden');
+    } else {
+      card.textContent = `${c.rank} of ${c.suit}`;
+    }
+    dealerDiv.appendChild(card);
+  });
+  document.getElementById('dealerValue').textContent =
+    hideDealerSecond && inRound ? '' : `Total: ${handValue(dealerHand)}`;
+
+  const playerDiv = document.getElementById('playerCards');
+  playerDiv.innerHTML = '';
+  playerHand.forEach(c => {
+    const card = document.createElement('span');
+    card.className = 'card';
+    card.textContent = `${c.rank} of ${c.suit}`;
+    playerDiv.appendChild(card);
+  });
+  document.getElementById('playerValue').textContent = `Total: ${handValue(playerHand)}`;
+}
+
+function endRound(message) {
+  inRound = false;
+  document.getElementById('hit').disabled = true;
+  document.getElementById('stand').disabled = true;
+  document.getElementById('deal').disabled = false;
+  document.getElementById('message').textContent = message;
+  updateDisplay(false);
+}
+
+function playerHit() {
+  playerHand.push(draw());
+  updateDisplay(true);
+  const val = handValue(playerHand);
+  if (val > 21) {
+    endRound('Bust! Dealer wins.');
+  }
+}
+
+function playerStand() {
+  while (handValue(dealerHand) < 17) {
+    dealerHand.push(draw());
+  }
+  const playerVal = handValue(playerHand);
+  const dealerVal = handValue(dealerHand);
+  let msg;
+  if (dealerVal > 21 || playerVal > dealerVal) {
+    msg = 'You win!';
+  } else if (playerVal === dealerVal) {
+    msg = "Push! It's a tie.";
+  } else {
+    msg = 'Dealer wins.';
+  }
+  endRound(msg);
+}
+
+// attach handlers
+ document.getElementById('deal').addEventListener('click', startRound);
+ document.getElementById('hit').addEventListener('click', playerHit);
+ document.getElementById('stand').addEventListener('click', playerStand);
+</script>
+</body>
+</html>
